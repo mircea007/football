@@ -1,24 +1,31 @@
 let canvas_el = document.getElementById('canvas');
+// fit screen to body size
+
+const RATIO = 16/9;
+let WIDTH = document.body.clientWidth;
+let HEIGHT = WIDTH / RATIO;
+canvas_el.setAttribute('width', WIDTH);
+canvas_el.setAttribute('height', HEIGHT);
+
 let ctx = canvas_el.getContext('2d');
 
-let WIDTH = canvas_el.getAttribute('width');
-let HEIGHT = canvas_el.getAttribute('height');
+let BACKGROUND_COL = '#90cc90';
 
-let BACKGROUND_COL = '#0044aa';
-
-let BALL_RAD = 15;
+let BALL_RAD = 0.015 * HEIGHT;
 let BALL_COL = '#ffffff';
 
-let PLAYER_RAD = 30;
+let PLAYER_RAD = 0.02 * HEIGHT;
 let PLAYER_COL = '#ff0000';
 let KICK_WIDTH = 3;
 let KICK_COLOR = '#ffffff';
 
-ctx.moveTo(0, 0);
-ctx.lineTo(WIDTH, HEIGHT);
-ctx.stroke();
-
 function draw_scene( {ballx, bally, playerx, playery, kicking} ){
+  ballx *= HEIGHT
+  bally *= HEIGHT
+
+  playerx *= HEIGHT
+  playery *= HEIGHT
+
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -39,40 +46,41 @@ function draw_scene( {ballx, bally, playerx, playery, kicking} ){
   }
 }
 
-//draw_scene( 100, 100, 200, 100 );
-
-let left_active = false;
-let right_active = false;
-let up_active = false;
-let down_active = false;
-let x_active = false;
-
 document.addEventListener('keydown', (evt) => {
-  if( evt.key === 'ArrowLeft' ) left_active = true;
-  if( evt.key === 'ArrowRight' ) right_active = true;
-  if( evt.key === 'ArrowUp' ) up_active = true;
-  if( evt.key === 'ArrowDown' ) down_active = true;
-  if( evt.key === 'x' ) x_active = true;
+  if( evt.key === 'ArrowLeft' )  socket.emit('key_upd', {'key': 'left', 'new_state': true});
+  if( evt.key === 'ArrowRight' ) socket.emit('key_upd', {'key': 'right', 'new_state': true});
+  if( evt.key === 'ArrowUp' )    socket.emit('key_upd', {'key': 'up', 'new_state': true});
+  if( evt.key === 'ArrowDown' )  socket.emit('key_upd', {'key': 'down', 'new_state': true});
+  if( evt.key === 'x' ) socket.emit('key_upd', {'key': 'x', 'new_state': true});
 });
 
 document.addEventListener('keyup', (evt) => {
-  if( evt.key === 'ArrowLeft' ) left_active = false;
-  if( evt.key === 'ArrowRight' ) right_active = false;
-  if( evt.key === 'ArrowUp' ) up_active = false;
-  if( evt.key === 'ArrowDown' ) down_active = false;
-  if( evt.key === 'x' ) x_active = false;
+  if( evt.key === 'ArrowLeft' )  socket.emit('key_upd', {'key': 'left', 'new_state': false});
+  if( evt.key === 'ArrowRight' ) socket.emit('key_upd', {'key': 'right', 'new_state': false});
+  if( evt.key === 'ArrowUp' )    socket.emit('key_upd', {'key': 'up', 'new_state': false});
+  if( evt.key === 'ArrowDown' )  socket.emit('key_upd', {'key': 'down', 'new_state': false});
+  if( evt.key === 'x' ) socket.emit('key_upd', {'key': 'x', 'new_state': false});
 });
 
-let ACC = 5e-4; // px/ms2
-let COEF = 1.5e-3;
-let MAX_SPEED = ACC / COEF; // px/ms
 
-let playerx = WIDTH / 2;
-let playery = HEIGHT / 2;
-let speedx = 0;
-let speedy = 0;
+let socket = io('http://localhost:8000/');
 
-let MIN_REFRESH = 20; // ms
+let game_state = {
+  'ballx': 0,
+  'bally': 0,
+  'playerx': 0,
+  'playery': 0,
+  'kicking': false
+};
+
+socket.on('connect', () => {console.log('connected');});
+socket.on('disconnect', () => {console.log('connected');});
+
+socket.on('gamestate', (new_state) => {
+  game_state = new_state;
+});
+
+let MIN_REFRESH = 1000 / 50; // ms
 
 let done = false;
 let prev_timestamp = undefined;
@@ -83,23 +91,9 @@ function step( timestamp ) {
   let delta = timestamp - prev_timestamp;
 
   if( delta >= MIN_REFRESH ){
-    let accx = ACC * (right_active - left_active) - COEF * speedx;
-    let accy = ACC * (down_active - up_active) - COEF * speedy;
-
-    speedx += delta * accx;
-    speedy += delta * accy;
-
-    playerx += delta * speedx;
-    playery += delta * speedy;
-
-    draw_scene({
-      ballx: 100 + 20 * (1 + Math.sin(timestamp/500)),
-      bally: 200,
-      playerx: playerx,
-      playery: playery,
-      kicking: x_active
-    });
-
+    // barbaric method, must fix sometime:
+    socket.emit('client_wants_update', {});
+    draw_scene(game_state);
     prev_timestamp = timestamp;
   }
 
