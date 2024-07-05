@@ -12,38 +12,33 @@ let ctx = canvas_el.getContext('2d');
 let BACKGROUND_COL = '#90cc90';
 
 let BALL_RAD = 0.015 * HEIGHT;
-let BALL_COL = '#ffffff';
+//let BALL_COL = '#ffffff';
 
 let PLAYER_RAD = 0.02 * HEIGHT;
-let PLAYER_COL = '#ff0000';
+//let PLAYER_COL = '#ff0000';
 let KICK_WIDTH = 3;
 let KICK_COLOR = '#ffffff';
 
-function draw_scene( {ballx, bally, playerx, playery, kicking} ){
-  ballx *= HEIGHT
-  bally *= HEIGHT
-
-  playerx *= HEIGHT
-  playery *= HEIGHT
-
+function draw_scene( entity_list ){
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-  ctx.fillStyle = BALL_COL;
-  ctx.beginPath();
-  ctx.arc(ballx, bally, BALL_RAD, 0, 2 * Math.PI);
-  ctx.fill();
+  entity_list.forEach( (corp) => {
+    x = corp['x'] * HEIGHT;
+    y = corp['y'] * HEIGHT;
+    R = corp['R'] * HEIGHT;
 
-  ctx.fillStyle = PLAYER_COL;
-  ctx.beginPath();
-  ctx.arc(playerx, playery, PLAYER_RAD, 0, 2 * Math.PI);
-  ctx.fill();
+    ctx.fillStyle = corp['color'];
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, 2 * Math.PI);
+    ctx.fill();
 
-  if( kicking ){
-    ctx.lineWidth = KICK_WIDTH;
-    ctx.strokeStyle = KICK_COLOR;
-    ctx.stroke();
-  }
+    if( corp['kicking'] ){
+      ctx.lineWidth = KICK_WIDTH;
+      ctx.strokeStyle = KICK_COLOR;
+      ctx.stroke();
+    }
+  });
 }
 
 document.addEventListener('keydown', (evt) => {
@@ -65,13 +60,7 @@ document.addEventListener('keyup', (evt) => {
 
 let socket = io('http://localhost:8000/');
 
-let game_state = {
-  'ballx': 0,
-  'bally': 0,
-  'playerx': 0,
-  'playery': 0,
-  'kicking': false
-};
+let game_state = [];
 
 socket.on('connect', () => {console.log('connected');});
 socket.on('disconnect', () => {console.log('connected');});
@@ -92,7 +81,7 @@ function step( timestamp ) {
 
   if( delta >= MIN_REFRESH ){
     // barbaric method, must fix sometime:
-    socket.emit('client_wants_update', {});
+    //socket.emit('client_wants_update', {});
     draw_scene(game_state);
     prev_timestamp = timestamp;
   }
