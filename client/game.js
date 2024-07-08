@@ -19,9 +19,41 @@ let PLAYER_RAD = 0.02 * HEIGHT;
 let KICK_WIDTH = 3;
 let KICK_COLOR = '#ffffff';
 
-function draw_scene( entity_list ){
+let PITCH_LINE_COLOR = '#eeeeee';
+
+const PADDING = 0.1 * HEIGHT;
+const PITCH_X_BEGIN = PADDING;
+const PITCH_X_END = WIDTH - PADDING;
+
+const PITCH_Y_BEGIN = PADDING;
+const PITCH_Y_END = HEIGHT - PADDING;
+
+const POLE_BIG_Y = HEIGHT * 0.7;
+const POLE_SMALL_Y = HEIGHT * 0.3;
+
+const NEXT_ROUND_DELAY = 3000;
+const TRANSITION = 200;
+
+function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  ctx.strokeStyle = PITCH_LINE_COLOR;
+  ctx.lineWidth = 5;
+
+  ctx.beginPath();
+  ctx.moveTo(PITCH_X_BEGIN, POLE_SMALL_Y);
+  ctx.lineTo(PITCH_X_BEGIN, PITCH_Y_BEGIN);
+  ctx.lineTo(PITCH_X_END, PITCH_Y_BEGIN);
+  ctx.lineTo(PITCH_X_END, POLE_SMALL_Y);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(PITCH_X_BEGIN, POLE_BIG_Y);
+  ctx.lineTo(PITCH_X_BEGIN, PITCH_Y_END);
+  ctx.lineTo(PITCH_X_END, PITCH_Y_END);
+  ctx.lineTo(PITCH_X_END, POLE_BIG_Y);
+  ctx.stroke();
 
   entity_list.forEach( (corp) => {
     x = corp['x'] * HEIGHT;
@@ -39,6 +71,39 @@ function draw_scene( entity_list ){
       ctx.stroke();
     }
   });
+
+  ctx.font = "15px Courier New, monospace";
+  ctx.fillStyle = "#000000";
+  ctx.fillText(
+    "Score: " + round_info.score[0] + ' vs ' + round_info.score[1],
+    20, 20
+  );
+
+  if( Math.floor(+(new Date()) / 100) % 100 == 0 )
+    console.log(round_info);
+
+  ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
+
+  if( !round_info.in_play ){ // animation between rounds
+    const trainsition_param = Math.min(
+      1,
+      (new Date() - round_info.start_play + NEXT_ROUND_DELAY) / TRANSITION,
+      (round_info.start_play - new Date()) / TRANSITION,
+    );
+
+    ctx.fillText(
+      Math.max(0, (round_info.start_play - (new Date())) / 1000).toFixed(1),
+      WIDTH - 60, 50
+    );
+
+    ctx.fillStyle = 'rgba(0, 0, 0, ' + 0.2 * trainsition_param + ')';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    ctx.font = "60px 'Brush Scipt MT', cursive";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("GOAL", WIDTH / 2, HEIGHT / 2 * trainsition_param);
+    ctx.fillText(round_info.score[0] + ' vs ' + round_info.score[1], WIDTH / 2, 60 + HEIGHT / 2 * trainsition_param);
+  }
 }
 
 document.addEventListener('keydown', (evt) => {
@@ -47,6 +112,12 @@ document.addEventListener('keydown', (evt) => {
   if( evt.key === 'ArrowUp' )    socket.emit('key_upd', {'key': 'up', 'new_state': true});
   if( evt.key === 'ArrowDown' )  socket.emit('key_upd', {'key': 'down', 'new_state': true});
   if( evt.key === 'x' ) socket.emit('key_upd', {'key': 'x', 'new_state': true});
+
+  if( evt.key === 'a' )  socket.emit('key_upd', {'key': 'left', 'new_state': true});
+  if( evt.key === 'd' ) socket.emit('key_upd', {'key': 'right', 'new_state': true});
+  if( evt.key === 'w' )    socket.emit('key_upd', {'key': 'up', 'new_state': true});
+  if( evt.key === 's' )  socket.emit('key_upd', {'key': 'down', 'new_state': true});
+  if( evt.code === 'Space' ) socket.emit('key_upd', {'key': 'x', 'new_state': true});
 });
 
 document.addEventListener('keyup', (evt) => {
@@ -55,12 +126,25 @@ document.addEventListener('keyup', (evt) => {
   if( evt.key === 'ArrowUp' )    socket.emit('key_upd', {'key': 'up', 'new_state': false});
   if( evt.key === 'ArrowDown' )  socket.emit('key_upd', {'key': 'down', 'new_state': false});
   if( evt.key === 'x' ) socket.emit('key_upd', {'key': 'x', 'new_state': false});
+
+  if( evt.key === 'a' )  socket.emit('key_upd', {'key': 'left', 'new_state': false});
+  if( evt.key === 'd' ) socket.emit('key_upd', {'key': 'right', 'new_state': false});
+  if( evt.key === 'w' )    socket.emit('key_upd', {'key': 'up', 'new_state': false});
+  if( evt.key === 's' )  socket.emit('key_upd', {'key': 'down', 'new_state': false});
+  if( evt.code === 'Space' ) socket.emit('key_upd', {'key': 'x', 'new_state': false});
 });
 
 
-let socket = io('http://localhost:8000/');
+let socket = io();
 
-let game_state = [];
+let game_state = {
+  'round_info': {
+      'score': [0, 0],
+      'in_play': false,
+      'start_play': +(new Date()) + 10 * 1000
+  },
+  'bodies': []
+};
 
 socket.on('connect', () => {console.log('connected');});
 socket.on('disconnect', () => {console.log('connected');});

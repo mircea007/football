@@ -23,12 +23,19 @@ RATIO = 16/9
 HEIGHT = 1.0
 WIDTH = HEIGHT * RATIO
 
+PADDING = 0.1 * HEIGHT
+PITCH_X_BEGIN = PADDING
+PITCH_X_END = WIDTH - PADDING
+
+PITCH_Y_BEGIN = PADDING
+PITCH_Y_END = HEIGHT - PADDING
+
 class Body:
     def __init__(self, mass: float, radius: float, poz, color = '#ffffff', stationary = False, kicking = False): # poz este vector 2D
         self.rest_mass = mass
         self.mass = mass
         self.R = radius
-        self.x = poz
+        self.x = np.copy(poz)
         self.v = np.zeros(2) # obiectele sunt initial in repaus
         self.F = np.zeros(2) # forta externa
         self.stationary = stationary
@@ -49,14 +56,22 @@ player_colors = [
     '#ff0000'
 ]
 
+used_positions = [
+    0,
+    0
+]
+
 players = []
 sid2player = {}
+sid2idx_type = {}
 
+POLE_BIG_Y = HEIGHT * 0.7
+POLE_SMALL_Y = HEIGHT * 0.3
 stalpi = [
-    Body(4.0,  0.015, np.array([WIDTH, HEIGHT * 0.7]), '#ff0000', True),
-    Body(4.0,  0.015, np.array([WIDTH, HEIGHT * 0.3]), '#ff0000', True),
-    Body(4.0,  0.015, np.array([0, HEIGHT * 0.7]), '#0000ff', True),
-    Body(4.0,  0.015, np.array([0, HEIGHT * 0.3]), '#0000ff', True),
+    Body(4.0,  0.015, np.array([PITCH_X_END, POLE_BIG_Y]), '#ff0000', True),
+    Body(4.0,  0.015, np.array([PITCH_X_END, POLE_SMALL_Y]), '#ff0000', True),
+    Body(4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_BIG_Y]), '#0000ff', True),
+    Body(4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_SMALL_Y]), '#0000ff', True),
 ]
 
 corpuri = [ball] + stalpi
@@ -65,6 +80,48 @@ KICK_DISTANCE = 10e-3
 KICK_MOMENTUM = 1.0
 
 keystates = {}
+
+NEXT_ROUND_DELAY = 3
+score = [0, 0]
+in_play = True
+start_play = time.time() # when in_play = False a countdown starts until the next round
+
+def reset_coords():
+    global ball
+    global players
+    global sid2player
+    global sid2idx_type
+
+    ball.x = np.array([WIDTH / 2, HEIGHT / 2])
+    ball.v = np.zeros(2)
+    for sid in sid2player:
+        sid2player[sid].x = np.copy(player_locations[sid2idx_type[sid]])
+        sid2player[sid].v = np.zeros(2)
+
+def check_game_state():
+    global NEXT_ROUND_DELAY
+    global PITCH_X_BEGIN
+    global PITCH_X_END
+
+    global score
+    global in_play
+    global start_play
+    global ball
+
+    if in_play == False:
+        if time.time() > start_play:
+            in_play = True
+            reset_coords()
+    else:
+        if ball.x[0] < PITCH_X_BEGIN:
+            score[1] += 1
+            in_play = False
+            start_play = time.time() + NEXT_ROUND_DELAY
+
+        elif ball.x[0] > PITCH_X_END:
+            score[0] += 1
+            in_play = False
+            start_play = time.time() + NEXT_ROUND_DELAY
 
 BROADCAST_REFRESH = 1 / 150
 last_emit_gamestate = None
@@ -79,15 +136,22 @@ def emit_gamestate():
     delta = now - last_emit_gamestate
     if delta >= BROADCAST_REFRESH:
         last_emit_gamestate = now
-        sio.emit('gamestate', [
-            {
-                'x': corp.x[0],
-                'y': corp.x[1],
-                'R': corp.R,
-                'color': corp.color,
-                'kicking': corp.kicking
-            } for corp in corpuri
-        ])
+        sio.emit('gamestate', {
+            'bodies': [
+                {
+                    'x': corp.x[0],
+                    'y': corp.x[1],
+                    'R': corp.R,
+                    'color': corp.color,
+                    'kicking': corp.kicking
+                } for corp in corpuri
+            ],
+            'round_info': {
+                'score': score,
+                'in_play': in_play,
+                'start_play': int(start_play * 1000)
+            }
+        })
 
 @sio.event
 def connect(sid, environ, auth):
@@ -100,11 +164,22 @@ def connect(sid, environ, auth):
 
     print('connect ', sid)
 
-    player_idx = len(players)
+    # if the lobby is full let others spectate
+    if sum(used_positions) == len(used_positions):
+        emit_gamestate()
+        return
+
+    player_idx = 0
+    while used_positions[player_idx] == 1:
+        player_idx += 1
+
+    used_positions[player_idx] = 1
+
     new_player = Body(10.0, 0.02, player_locations[player_idx], player_colors[player_idx])
     players.append(new_player)
     corpuri.append(new_player)
     sid2player[sid] = new_player
+    sid2idx_type[sid] = player_idx # avem nevoie la disconnect
     keystates[sid] = {
         'left': False,
         'right': False,
@@ -125,6 +200,12 @@ def disconnect(sid):
     global sid2player
     global corpuri
 
+    if not sid in sid2player:
+        return
+
+    player_type = sid2idx_type[sid]
+    used_positions[player_type] = 0
+
     player = sid2player[sid]
     del sid2player[sid]
     del keystates[sid]
@@ -138,6 +219,9 @@ def disconnect(sid):
 def key_upd(sid, data):
     global keystates
     global players
+
+    if not sid in keystates:
+        return
 
     keystates[sid][data['key']] = bool(data['new_state'])
 
@@ -186,12 +270,12 @@ def do_physics():
         player.F = np.array([
             player.keystates['right'] - player.keystates['left'],
             player.keystates['down'] - player.keystates['up']
-        ]) * 8.0 - 0.8 * player.mass * player.v
+        ]) * 8.0 - 0.8 * player.mass * player.v * 4
 
-    ball.F = - 0.3 * ball.mass * ball.v
+    ball.F = - 0.3 * ball.mass * ball.v * 4
 
     # ELASTIC COLLISION WITH THE BORDER --- NOT THE CASE IN REAL BONKIO??
-    for C in corpuri:
+    for C in players:
         if C.x[0] + C.R >= WIDTH - EPS:
             if C.v[0] > 0:
                 C.v[0] = -C.v[0]
@@ -211,6 +295,30 @@ def do_physics():
             if C.v[1] < 0:
                 C.v[1] = -C.v[1]
             C.F[1] = 0
+
+    # ELASTIC COLLISION WITH THE BORDER - BALL
+    if in_play:
+        inside_goal = (ball.x[1] < POLE_BIG_Y and ball.x[1] > POLE_SMALL_Y)
+        if ball.x[0] + ball.R >= PITCH_X_END - EPS and not inside_goal:
+            if ball.v[0] > 0:
+                ball.v[0] = -ball.v[0]
+            ball.F[0] = 0
+
+        if ball.x[0] - ball.R <= PITCH_X_BEGIN + EPS and not inside_goal:
+            if ball.v[0] < 0:
+                ball.v[0] = -ball.v[0]
+            ball.F[0] = 0
+
+        if ball.x[1] + ball.R >= PITCH_Y_END - EPS:
+            if ball.v[1] > 0:
+                ball.v[1] = -ball.v[1]
+            ball.F[1] = 0
+
+        if ball.x[1] - ball.R <= PITCH_Y_BEGIN + EPS:
+            if ball.v[1] < 0:
+                ball.v[1] = -ball.v[1]
+            ball.F[1] = 0
+
 
     # ELASTIC COLLISION BETWEEN THE PLAYER AND THE BALL -- HOW TO INCLUDE RESTITUTION?
     N = len(corpuri)
@@ -251,6 +359,8 @@ def do_physics():
             C.v += a * dt
             C.x += C.v * dt # maybe +1/2dt^2 * F/m
             #C.x += (C.v + dt/2 * a) * dt
+
+    check_game_state()
 
 def game_loop():
     while True:

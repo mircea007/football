@@ -1,5 +1,5 @@
 #!/bin/bash
 
-gunicorn -w 1 server:app --worker-class eventlet --reload
+gunicorn -w 1 server:app --worker-class eventlet --reload -b 0.0.0.0:3000
 
 # --reload for development purposes
