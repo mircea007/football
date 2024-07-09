@@ -77,7 +77,7 @@ stalpi = [
 corpuri = [ball] + stalpi
 
 KICK_DISTANCE = 10e-3
-KICK_MOMENTUM = 1.0
+KICK_MOMENTUM = 1.5
 
 keystates = {}
 
@@ -270,9 +270,9 @@ def do_physics():
         player.F = np.array([
             player.keystates['right'] - player.keystates['left'],
             player.keystates['down'] - player.keystates['up']
-        ]) * 8.0 - 0.8 * player.mass * player.v * 4
+        ]) * 8.0 - 0.8 * player.mass * player.v * 3
 
-    ball.F = - 0.3 * ball.mass * ball.v * 4
+    ball.F = - 0.3 * ball.mass * ball.v * 2
 
     # ELASTIC COLLISION WITH THE BORDER --- NOT THE CASE IN REAL BONKIO??
     for C in players:
@@ -319,7 +319,6 @@ def do_physics():
                 ball.v[1] = -ball.v[1]
             ball.F[1] = 0
 
-
     # ELASTIC COLLISION BETWEEN THE PLAYER AND THE BALL -- HOW TO INCLUDE RESTITUTION?
     N = len(corpuri)
     for idxA in range(N):
@@ -347,7 +346,7 @@ def do_physics():
 
                 # do we need to handle forces here? -- maybe, subject of later discussion
 
-    # KICKING
+    # KICKING 2
     for player in players:
         if player.kicking and modul(player.x - ball.x) - player.R - ball.R <= KICK_DISTANCE:
             norm = (ball.x - player.x) / modul(player.x - ball.x)
