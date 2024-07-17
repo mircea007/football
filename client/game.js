@@ -2,41 +2,57 @@ let canvas_el = document.getElementById('canvas');
 // fit screen to body size
 
 const RATIO = 16/9;
-let WIDTH = document.body.clientWidth;
-let HEIGHT = WIDTH / RATIO;
-canvas_el.setAttribute('width', WIDTH);
-canvas_el.setAttribute('height', HEIGHT);
+let HEIGHT = 180;
+let WIDTH = 320;
+let need_new_canvas = true;
 
 let ctx = canvas_el.getContext('2d');
 
 let BACKGROUND_COL = '#90cc90';
 
-let BALL_RAD = 0.015 * HEIGHT;
-//let BALL_COL = '#ffffff';
-
-let PLAYER_RAD = 0.02 * HEIGHT;
-//let PLAYER_COL = '#ff0000';
 let KICK_WIDTH = 3;
 let KICK_COLOR = '#ffffff';
 
 let PITCH_LINE_COLOR = '#eeeeee';
-
-const PADDING = 0.1 * HEIGHT;
-const PITCH_X_BEGIN = PADDING;
-const PITCH_X_END = WIDTH - PADDING;
-
-const PITCH_Y_BEGIN = PADDING;
-const PITCH_Y_END = HEIGHT - PADDING;
-
-const POLE_BIG_Y = HEIGHT * 0.7;
-const POLE_SMALL_Y = HEIGHT * 0.3;
 
 const NEXT_ROUND_DELAY = 3000;
 const TRANSITION = 200;
 
 let client_server_time_delta = 0; // initialy assume client and server have same clocks
 
+window.addEventListener("resize", _ => {
+  need_new_canvas = true;
+});
+
+function handle_wh_changes() {
+  if( !need_new_canvas )
+    return;
+
+  canvas_el.height = HEIGHT = Math.min(document.body.clientWidth / RATIO, document.body.clientHeight);
+  canvas_el.width = WIDTH = HEIGHT * RATIO;
+
+  canvas_el.style.width = WIDTH;
+  canvas_el.style.height = HEIGHT;
+
+  ctx = canvas_el.getContext('2d'); // new context
+  need_new_canvas = false;
+}
+
+handle_wh_changes();
+
 function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
+  handle_wh_changes();
+
+  const PADDING = 0.1 * HEIGHT;
+  const PITCH_X_BEGIN = PADDING;
+  const PITCH_X_END = WIDTH - PADDING;
+
+  const PITCH_Y_BEGIN = PADDING;
+  const PITCH_Y_END = HEIGHT - PADDING;
+
+  const POLE_BIG_Y = HEIGHT * 0.7;
+  const POLE_SMALL_Y = HEIGHT * 0.3;
+
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
