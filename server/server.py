@@ -85,6 +85,7 @@ NEXT_ROUND_DELAY = 3
 score = [0, 0]
 in_play = True
 start_play = time.time() # when in_play = False a countdown starts until the next round
+last_scorer = 0
 
 def reset_coords():
     global ball
@@ -107,19 +108,23 @@ def check_game_state():
     global in_play
     global start_play
     global ball
+    global last_scorer
 
     if in_play == False:
         if time.time() > start_play:
             in_play = True
             reset_coords()
     else:
+        change_state = False
         if ball.x[0] < PITCH_X_BEGIN:
-            score[1] += 1
-            in_play = False
-            start_play = time.time() + NEXT_ROUND_DELAY
-
+            last_scorer = 1
+            change_state = True
         elif ball.x[0] > PITCH_X_END:
-            score[0] += 1
+            last_scorer = 0
+            change_state = True
+
+        if change_state:
+            score[last_scorer] += 1
             in_play = False
             start_play = time.time() + NEXT_ROUND_DELAY
 
@@ -149,7 +154,8 @@ def emit_gamestate():
             'round_info': {
                 'score': score,
                 'in_play': in_play,
-                'start_play': int(start_play * 1000)
+                'start_play': int(start_play * 1000),
+                'last_scorer': last_scorer,
             }
         })
 

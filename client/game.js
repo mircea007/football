@@ -102,6 +102,8 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
 
   ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
 
+  document.body.style.backgroundColor = '';
+
   if( !round_info.in_play ){ // animation between rounds
     const trainsition_param = Math.min(
       1,
@@ -121,6 +123,12 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
     ctx.fillStyle = "#ffffff";
     ctx.fillText("GOAL", WIDTH / 2, HEIGHT / 2 * trainsition_param);
     ctx.fillText(round_info.score[0] + ' vs ' + round_info.score[1], WIDTH / 2, 60 + HEIGHT / 2 * trainsition_param);
+
+    if( round_info.last_scorer == 0 )
+      document.body.style.backgroundColor = 'blue';
+
+    if( round_info.last_scorer == 1 )
+      document.body.style.backgroundColor = 'red';
   }
 }
 
