@@ -189,6 +189,7 @@ def connect(sid, environ, auth):
     }
     new_player.keystates = keystates[sid]
 
+    sio.emit('time_sync', {'server_time': int(1000 * time.time())})
     emit_gamestate()
 
 @sio.event

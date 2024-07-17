@@ -34,6 +34,8 @@ const POLE_SMALL_Y = HEIGHT * 0.3;
 const NEXT_ROUND_DELAY = 3000;
 const TRANSITION = 200;
 
+let client_server_time_delta = 0; // initialy assume client and server have same clocks
+
 function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -79,8 +81,8 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
     20, 20
   );
 
-  if( Math.floor(+(new Date()) / 100) % 100 == 0 )
-    console.log(round_info);
+  //if( Math.floor(+(new Date()) / 100) % 100 == 0 )
+  //  console.log(round_info);
 
   ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
 
@@ -148,8 +150,12 @@ let game_state = {
 
 socket.on('connect', () => {console.log('connected');});
 socket.on('disconnect', () => {console.log('connected');});
+socket.on('time_sync', ({'server_time': server_time}) => {
+  client_server_time_delta = (new Date()) - server_time;
+})
 
 socket.on('gamestate', (new_state) => {
+  new_state.round_info.start_play += client_server_time_delta;
   game_state = new_state;
 });
 
