@@ -76,7 +76,7 @@ stalpi = [
 
 corpuri = [ball] + stalpi
 
-KICK_DISTANCE = 10e-3
+KICK_DISTANCE = 20e-3
 KICK_MOMENTUM = 1.5
 
 keystates = {}
