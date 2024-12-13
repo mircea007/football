@@ -76,8 +76,10 @@ stalpi = [
 
 corpuri = [ball] + stalpi
 
-KICK_DISTANCE = 20e-3
-KICK_MOMENTUM = 1.5
+KICK_DISTANCE = 15e-3
+KICK_MOMENTUM = 0.5
+
+RESTITUTION = 0.80
 
 keystates = {}
 
@@ -181,7 +183,7 @@ def connect(sid, environ, auth):
 
     used_positions[player_idx] = 1
 
-    new_player = Body(10.0, 0.02, player_locations[player_idx], player_colors[player_idx])
+    new_player = Body(10.0, 0.017, player_locations[player_idx], player_colors[player_idx])
     players.append(new_player)
     corpuri.append(new_player)
     sid2player[sid] = new_player
@@ -285,22 +287,22 @@ def do_physics():
     for C in players:
         if C.x[0] + C.R >= WIDTH - EPS:
             if C.v[0] > 0:
-                C.v[0] = -C.v[0]
+                C.v[0] = -RESTITUTION * C.v[0]
             C.F[0] = 0
 
         if C.x[0] - C.R <= 0.0 + EPS:
             if C.v[0] < 0:
-                C.v[0] = -C.v[0]
+                C.v[0] = -RESTITUTION * C.v[0]
             C.F[0] = 0
 
         if C.x[1] + C.R >= HEIGHT - EPS:
             if C.v[1] > 0:
-                C.v[1] = -C.v[1]
+                C.v[1] = -RESTITUTION * C.v[1]
             C.F[1] = 0
 
         if C.x[1] - C.R <= 0.0 + EPS:
             if C.v[1] < 0:
-                C.v[1] = -C.v[1]
+                C.v[1] = -RESTITUTION * C.v[1]
             C.F[1] = 0
 
     # ELASTIC COLLISION WITH THE BORDER - BALL
@@ -308,22 +310,22 @@ def do_physics():
         inside_goal = (ball.x[1] < POLE_BIG_Y and ball.x[1] > POLE_SMALL_Y)
         if ball.x[0] + ball.R >= PITCH_X_END - EPS and not inside_goal:
             if ball.v[0] > 0:
-                ball.v[0] = -ball.v[0]
+                ball.v[0] = -RESTITUTION * ball.v[0]
             ball.F[0] = 0
 
         if ball.x[0] - ball.R <= PITCH_X_BEGIN + EPS and not inside_goal:
             if ball.v[0] < 0:
-                ball.v[0] = -ball.v[0]
+                ball.v[0] = -RESTITUTION * ball.v[0]
             ball.F[0] = 0
 
         if ball.x[1] + ball.R >= PITCH_Y_END - EPS:
             if ball.v[1] > 0:
-                ball.v[1] = -ball.v[1]
+                ball.v[1] = -RESTITUTION * ball.v[1]
             ball.F[1] = 0
 
         if ball.x[1] - ball.R <= PITCH_Y_BEGIN + EPS:
             if ball.v[1] < 0:
-                ball.v[1] = -ball.v[1]
+                ball.v[1] = -RESTITUTION * ball.v[1]
             ball.F[1] = 0
 
     # ELASTIC COLLISION BETWEEN THE PLAYER AND THE BALL -- HOW TO INCLUDE RESTITUTION?
@@ -345,8 +347,21 @@ def do_physics():
                 a = norm.dot(dorel.v)
                 b = norm.dot(gigel.v)
 
-                A = 2 * (a * dorel.mass + b * gigel.mass) / (dorel.mass + gigel.mass) - a
-                B = 2 * (a * dorel.mass + b * gigel.mass) / (dorel.mass + gigel.mass) - b
+                vrel = b - a
+                new_vrel = -RESTITUTION * (b - a)
+                total_momentum = dorel.mass * a + gigel.mass * b
+
+                # ma * a + mb * b = ma * A + mb * B
+                # B - A = -R * (b - a)
+
+                # ma * A + mb * B + ma * B - ma * A = momentum + ma * new_vrel
+                # (mb + ma) B = momentum + ma * new_vrel
+
+                A = (total_momentum - gigel.mass * new_vrel) / (dorel.mass + gigel.mass)
+                B = (total_momentum + dorel.mass * new_vrel) / (dorel.mass + gigel.mass)
+
+                #A = 2 * (a * dorel.mass + b * gigel.mass) / (dorel.mass + gigel.mass) - a
+                #B = 2 * (a * dorel.mass + b * gigel.mass) / (dorel.mass + gigel.mass) - b
 
                 dorel.v += norm * (A - a)
                 gigel.v += norm * (B - b)
