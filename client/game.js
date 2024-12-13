@@ -9,6 +9,7 @@ let need_new_canvas = true;
 let ctx = canvas_el.getContext('2d');
 
 let BACKGROUND_COL = '#90cc90';
+let DARK_BACKGROUND_COL = '#85c085'
 
 let KICK_WIDTH = 3;
 let KICK_COLOR = '#ffffff';
@@ -57,9 +58,16 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   const PADDING_CAREU = HEIGHT * 0.1;
 
   const CENTER_RADIUS = HEIGHT * 0.075;
-    
+
+  const BANDS = 12;
+
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // dark bands on the pitch, even bands are dark, odd ones are light
+  ctx.fillStyle = DARK_BACKGROUND_COL;
+  for( let i = 0; i < BANDS; i += 2 )
+    ctx.fillRect(PITCH_X_BEGIN + (PITCH_X_END - PITCH_X_BEGIN) * i / BANDS, PITCH_Y_BEGIN, (PITCH_X_END - PITCH_X_BEGIN) / BANDS, PITCH_Y_END - PITCH_Y_BEGIN);
 
   ctx.strokeStyle = PITCH_LINE_COLOR;
   ctx.lineWidth = 3;
