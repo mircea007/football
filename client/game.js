@@ -53,24 +53,40 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   const POLE_BIG_Y = HEIGHT * 0.7;
   const POLE_SMALL_Y = HEIGHT * 0.3;
 
+  const LEN_CAREU = HEIGHT * 0.2;
+  const PADDING_CAREU = HEIGHT * 0.1;
+
+  const CENTER_RADIUS = HEIGHT * 0.075;
+    
   ctx.fillStyle = BACKGROUND_COL;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
   ctx.strokeStyle = PITCH_LINE_COLOR;
-  ctx.lineWidth = 5;
+  ctx.lineWidth = 3;
 
+  // frame
   ctx.beginPath();
-  ctx.moveTo(PITCH_X_BEGIN, POLE_SMALL_Y);
-  ctx.lineTo(PITCH_X_BEGIN, PITCH_Y_BEGIN);
-  ctx.lineTo(PITCH_X_END, PITCH_Y_BEGIN);
-  ctx.lineTo(PITCH_X_END, POLE_SMALL_Y);
+  ctx.rect(PITCH_X_BEGIN, PITCH_Y_BEGIN, PITCH_X_END - PITCH_X_BEGIN, PITCH_Y_END - PITCH_Y_BEGIN);
+  ctx.stroke();
+
+  // careu stang
+  ctx.beginPath();
+  ctx.rect(PITCH_X_BEGIN, POLE_SMALL_Y - PADDING_CAREU, LEN_CAREU, POLE_BIG_Y - POLE_SMALL_Y + 2 * PADDING_CAREU);
+  ctx.stroke();
+
+  // careu drept
+  ctx.beginPath();
+  ctx.rect(PITCH_X_END - LEN_CAREU, POLE_SMALL_Y - PADDING_CAREU, LEN_CAREU, POLE_BIG_Y - POLE_SMALL_Y + 2 * PADDING_CAREU);
+  ctx.stroke();
+
+  // cetru
+  ctx.beginPath();
+  ctx.moveTo(WIDTH / 2, PITCH_Y_BEGIN);
+  ctx.lineTo(WIDTH / 2, PITCH_Y_END);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(PITCH_X_BEGIN, POLE_BIG_Y);
-  ctx.lineTo(PITCH_X_BEGIN, PITCH_Y_END);
-  ctx.lineTo(PITCH_X_END, PITCH_Y_END);
-  ctx.lineTo(PITCH_X_END, POLE_BIG_Y);
+  ctx.arc(WIDTH / 2, HEIGHT / 2, CENTER_RADIUS, 0, 2 * Math.PI);
   ctx.stroke();
 
   entity_list.forEach( (corp) => {
