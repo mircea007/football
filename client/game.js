@@ -41,6 +41,8 @@ function handle_wh_changes() {
 
 handle_wh_changes();
 
+let FPS = 30;
+
 function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   handle_wh_changes();
 
@@ -51,8 +53,8 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   const PITCH_Y_BEGIN = PADDING;
   const PITCH_Y_END = HEIGHT - PADDING;
 
-  const POLE_BIG_Y = HEIGHT * 0.7;
-  const POLE_SMALL_Y = HEIGHT * 0.3;
+  const POLE_BIG_Y = HEIGHT * 0.65;
+  const POLE_SMALL_Y = HEIGHT * 0.35;
 
   const LEN_CAREU = HEIGHT * 0.2;
   const PADDING_CAREU = HEIGHT * 0.1;
@@ -125,6 +127,7 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   //  console.log(round_info);
 
   ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
+  ctx.fillText('FPS = ' + FPS.toFixed(1), 20, 40);
 
   document.body.style.backgroundColor = '';
 
@@ -218,6 +221,7 @@ function step( timestamp ) {
   let delta = timestamp - prev_timestamp;
 
   if( delta >= MIN_REFRESH ){
+    FPS = 1000 / delta;
     // barbaric method, must fix sometime:
     //socket.emit('client_wants_update', {});
     draw_scene(game_state);

@@ -65,8 +65,8 @@ players = []
 sid2player = {}
 sid2idx_type = {}
 
-POLE_BIG_Y = HEIGHT * 0.7
-POLE_SMALL_Y = HEIGHT * 0.3
+POLE_BIG_Y = HEIGHT * 0.65
+POLE_SMALL_Y = HEIGHT * 0.35
 stalpi = [
     Body(4.0,  0.015, np.array([PITCH_X_END, POLE_BIG_Y]), '#ff0000', True),
     Body(4.0,  0.015, np.array([PITCH_X_END, POLE_SMALL_Y]), '#ff0000', True),
@@ -183,7 +183,7 @@ def connect(sid, environ, auth):
 
     used_positions[player_idx] = 1
 
-    new_player = Body(10.0, 0.017, player_locations[player_idx], player_colors[player_idx])
+    new_player = Body(10.0, 0.02, player_locations[player_idx], player_colors[player_idx])
     players.append(new_player)
     corpuri.append(new_player)
     sid2player[sid] = new_player
