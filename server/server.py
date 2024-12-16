@@ -31,7 +31,7 @@ PITCH_Y_BEGIN = PADDING
 PITCH_Y_END = HEIGHT - PADDING
 
 class Body:
-    def __init__(self, mass: float, radius: float, poz, color = '#ffffff', stationary = False, kicking = False): # poz este vector 2D
+    def __init__(self, mass: float, radius: float, poz, color = '#ffffff', stationary = False, kicking = False, used_kick = True): # poz este vector 2D
         self.rest_mass = mass
         self.mass = mass
         self.R = radius
@@ -41,6 +41,7 @@ class Body:
         self.stationary = stationary
         self.color = color
         self.kicking = kicking
+        self.used_kick = used_kick
         self.keystates = None
 
 ball   = Body(4.0,  0.015, np.array([WIDTH / 2, HEIGHT / 2]))
@@ -77,7 +78,7 @@ stalpi = [
 corpuri = [ball] + stalpi
 
 KICK_DISTANCE = 15e-3
-KICK_MOMENTUM = 0.5
+KICK_MOMENTUM = 3
 
 RESTITUTION = 0.80
 
@@ -100,6 +101,7 @@ def reset_coords():
     for sid in sid2player:
         sid2player[sid].x = np.copy(player_locations[sid2idx_type[sid]])
         sid2player[sid].v = np.zeros(2)
+        sid2player[sid].used_kick = False
 
 def check_game_state():
     global NEXT_ROUND_DELAY
@@ -266,6 +268,8 @@ def do_physics():
         return
 
     for player in players:
+        if player.kicking == False and player.keystates['x'] == True:
+            player.used_kick = False
         player.kicking = player.keystates['x']
         player.mass = player.rest_mass * (1.5 if player.kicking else 1.0)
 
@@ -370,9 +374,10 @@ def do_physics():
 
     # KICKING 2
     for player in players:
-        if player.kicking and modul(player.x - ball.x) - player.R - ball.R <= KICK_DISTANCE:
+        if (not player.used_kick) and player.kicking and modul(player.x - ball.x) - player.R - ball.R <= KICK_DISTANCE:
             norm = (ball.x - player.x) / modul(player.x - ball.x)
             ball.v += KICK_MOMENTUM / ball.mass * norm
+            player.used_kick = True
 
     for C in corpuri:
         if not C.stationary:
