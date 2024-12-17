@@ -112,6 +112,7 @@ def reset_coords():
     ball.x = np.array([WIDTH / 2, HEIGHT / 2])
     ball.v = np.zeros(2)
     corpuri = [ball] + stalpi
+    player_bodies = []
     loc_idx = [0, 0]
     for player in players:
         P = Body(
@@ -122,6 +123,7 @@ def reset_coords():
             name = player.name
         )
         P.keystates = keystates[player.sid]
+        loc_idx[player.team] += 1
 
         player_bodies.append(P)
         corpuri.append(P)
@@ -384,7 +386,11 @@ def do_physics():
 
             delta = gigel.x - dorel.x # de la player la ball
             delta_abs = modul(delta)
+
             norm = delta / delta_abs
+            if delta_abs <= EPS:
+                norm = np.array([1, 0])
+
             if delta_abs <= gigel.R + dorel.R + EPS:
                 #perp = np.array([-norm[1], norm[0]])
 

@@ -29,7 +29,10 @@ function handle_wh_changes() {
   if( !need_new_canvas )
     return;
 
-  canvas_el.height = HEIGHT = Math.min(document.body.clientWidth / RATIO, document.body.clientHeight);
+  const height = window.innerHeight;
+  const width = window.innerWidth;
+
+  canvas_el.height = HEIGHT = Math.min(width / RATIO, height);
   canvas_el.width = WIDTH = HEIGHT * RATIO;
 
   canvas_el.style.width = WIDTH;
