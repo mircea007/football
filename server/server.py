@@ -117,6 +117,9 @@ def reset_coords():
             name = player.name
         )
         P.keystates = keystates[player.sid]
+
+        player_bodies.append(P)
+        corpuri.append(P)
         player.body = P
 
 def check_game_state():
