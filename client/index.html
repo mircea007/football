@@ -10,19 +10,16 @@
 <body>
   <canvas id='canvas' width="320" height="180"></canvas>
   <!-- width and height are later adjusted in game.js -->
-  <script src='./game.js'></script>
 
-  <style>
-    body {
-      margin:0;
-      width:100vw;
-      height:100vh;
-      overflow:hidden;
-      background-color: #508850;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: 200ms;
-    }
-  </style>
+  <form class='join' id='join'>
+    <label id='prompt'>cum te chema ma?</label> <br/>
+    <input type='text' name='name' id='name'/> <br/>
+    <select id='team' name='team'>
+      <option value="blue">Blue</option>
+      <option value="red">Red</option>
+    </select>
+  </form>
+
+
+  <script src='./game.js'></script>
 </body>

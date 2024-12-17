@@ -114,6 +114,14 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
       ctx.strokeStyle = KICK_COLOR;
       ctx.stroke();
     }
+
+    const nick = corp['name'];
+    if( nick ){
+      ctx.font = "15px Courier New, monospace";
+      ctx.fillStyle = "#ffffff";
+      let text_info = ctx.measureText(nick);
+      ctx.fillText(nick, x - text_info.width / 2, y - R - 10);
+    }
   });
 
   ctx.font = "15px Courier New, monospace";
@@ -148,8 +156,10 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
 
     ctx.font = "60px 'Brush Scipt MT', cursive";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText("GOAL", WIDTH / 2, HEIGHT / 2 * trainsition_param);
-    ctx.fillText(round_info.score[0] + ' vs ' + round_info.score[1], WIDTH / 2, 60 + HEIGHT / 2 * trainsition_param);
+    ctx.fillText("GOAL", WIDTH / 2 - ctx.measureText("GOAL").width / 2, HEIGHT / 2 * trainsition_param);
+
+    let tmp_text = round_info.score[0] + ' vs ' + round_info.score[1];
+    ctx.fillText(tmp_text, WIDTH / 2 - ctx.measureText(tmp_text).width / 2, 60 + HEIGHT / 2 * trainsition_param);
 
     if( round_info.last_scorer == 0 )
       document.body.style.backgroundColor = 'blue';
@@ -208,6 +218,27 @@ socket.on('time_sync', ({'server_time': server_time}) => {
 socket.on('gamestate', (new_state) => {
   new_state.round_info.start_play += client_server_time_delta;
   game_state = new_state;
+});
+
+let form = document.getElementById('join');
+let name_input = document.getElementById('name');
+let team_input = document.getElementById('team');
+
+form.addEventListener('submit', (evt) => {
+  socket.emit('request_join', {
+    'name': name_input.value,
+    'team': team_input.value
+  });
+
+  evt.preventDefault();
+});
+
+socket.on('request_accept', (evt) => {
+  form.classList.add("form_acc");
+});
+
+socket.on('request_deny', (evt) => {
+  form.classList.add("form_deny");
 });
 
 let MIN_REFRESH = 1000 / 50; // ms

@@ -67,6 +67,11 @@ team_colors = [
     '#ff0000'
 ]
 
+team_count = [
+    0,
+    0
+]
+
 player_bodies = []
 sid2player = {}
 
@@ -191,6 +196,8 @@ def add_player(sid, name, team):
 
     reset_after = (len(players) == 0)
 
+    team_count[team] += 1
+
     new_player = Player(name, team, sid)
     players.append(new_player)
     sid2player[sid] = new_player
@@ -207,21 +214,7 @@ def add_player(sid, name, team):
 
 @sio.event
 def connect(sid, environ, auth):
-    global keystates
-    global player_bodies
-    global player_locations
-    global player_colors
-    global sid2player
-    global corpuri
-
     print('connect ', sid)
-
-    if len(players) >= 2:
-        emit_gamestate()
-        return
-
-    add_player(sid, 'joe', len(players) == 0)
-
     sio.emit('time_sync', {'server_time': int(1000 * time.time())})
     emit_gamestate()
 
@@ -248,6 +241,32 @@ def disconnect(sid):
     players.remove(player)
 
     print('disconnect ', sid)
+
+@sio.on('request_join')
+def request_join(sid, data):
+    team = data['team']
+    name = data['name']
+
+    if not name:
+        sio.emit('request_deny', None, to = sid)
+        return
+
+    if not (team == 'red' or team == 'blue'):
+        sio.emit('request_deny', None, to = sid)
+        return
+
+    team = (team == 'red')
+
+    if team_count[team] >= len(player_locations[team]):
+        sio.emit('request_deny', None, to = sid)
+        return
+
+    if sid in sid2player:
+        sio.emit('request_deny', None, to = sid)
+        return
+
+    add_player(sid, name, team)
+    sio.emit('request_accept', to = sid)
 
 @sio.on('key_upd')
 def key_upd(sid, data):

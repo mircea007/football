@@ -10,3 +10,32 @@ body {
   transition: 200ms;
 }
 
+.join {
+  position: fixed;
+  margin: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  border-radius: 10px;
+}
+
+#prompt {
+  color: white;
+  font: 15px Courier New, monospace;
+}
+
+#name {
+  background-color: black;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.form_acc {
+  display: none;
+}
+
+.form_deny {
+  background-color: red;
+}
