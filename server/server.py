@@ -31,7 +31,7 @@ PITCH_Y_BEGIN = PADDING
 PITCH_Y_END = HEIGHT - PADDING
 
 class Body:
-    def __init__(self, mass: float, radius: float, poz, color = '#ffffff', stationary = False, kicking = False, used_kick = True): # poz este vector 2D
+    def __init__(self, mass: float, radius: float, poz, color = '#ffffff', stationary = False, kicking = False, used_kick = True, name = None): # poz este vector 2D
         self.rest_mass = mass
         self.mass = mass
         self.R = radius
@@ -43,28 +43,32 @@ class Body:
         self.kicking = kicking
         self.used_kick = used_kick
         self.keystates = None
+        self.name = name
+
+class Player:
+    def __init__(self, name, team: bool, sid):
+        self.name = name
+        self.team = team
+        self.sid = sid
+        self.body = None
+
+players = []
 
 ball   = Body(4.0,  0.015, np.array([WIDTH / 2, HEIGHT / 2]))
 #player = Body(10.0, 0.02, np.array([0.8 * WIDTH, HEIGHT / 2]), '#ff0000')
 
 player_locations = [
-    np.array([0.2 * WIDTH, 0.5 * HEIGHT]),
-    np.array([0.8 * WIDTH, 0.5 * HEIGHT]),
+    [np.array([0.2 * WIDTH, 0.5 * HEIGHT]), np.array([0.2 * WIDTH, 0.4 * HEIGHT]), np.array([0.2 * WIDTH, 0.6 * HEIGHT])],
+    [np.array([0.8 * WIDTH, 0.5 * HEIGHT]), np.array([0.8 * WIDTH, 0.4 * HEIGHT]), np.array([0.8 * WIDTH, 0.6 * HEIGHT])]
 ]
 
-player_colors = [
+team_colors = [
     '#0000ff',
     '#ff0000'
 ]
 
-used_positions = [
-    0,
-    0
-]
-
-players = []
+player_bodies = []
 sid2player = {}
-sid2idx_type = {}
 
 POLE_BIG_Y = HEIGHT * 0.65
 POLE_SMALL_Y = HEIGHT * 0.35
@@ -82,7 +86,7 @@ KICK_MOMENTUM = 3
 
 RESTITUTION = 0.80
 
-keystates = {}
+keystates = {} # access by sid
 
 NEXT_ROUND_DELAY = 3
 score = [0, 0]
@@ -90,18 +94,30 @@ in_play = True
 start_play = time.time() # when in_play = False a countdown starts until the next round
 last_scorer = 0
 
+# prepares arena for the round
 def reset_coords():
     global ball
-    global players
+    global player_bodies
     global sid2player
     global sid2idx_type
+    global corpuri
+    global players
+    global keystates
 
     ball.x = np.array([WIDTH / 2, HEIGHT / 2])
     ball.v = np.zeros(2)
-    for sid in sid2player:
-        sid2player[sid].x = np.copy(player_locations[sid2idx_type[sid]])
-        sid2player[sid].v = np.zeros(2)
-        sid2player[sid].used_kick = False
+    corpuri = [ball] + stalpi
+    loc_idx = [0, 0]
+    for player in players:
+        P = Body(
+            10.0,
+            0.02,
+            player_locations[player.team][loc_idx[player.team]],
+            team_colors[player.team],
+            name = player.name
+        )
+        P.keystates = keystates[player.sid]
+        player.body = P
 
 def check_game_state():
     global NEXT_ROUND_DELAY
@@ -152,7 +168,8 @@ def emit_gamestate():
                     'y': corp.x[1],
                     'R': corp.R,
                     'color': corp.color,
-                    'kicking': corp.kicking
+                    'kicking': corp.kicking,
+                    'name': corp.name
                 } for corp in corpuri
             ],
             'round_info': {
@@ -163,33 +180,17 @@ def emit_gamestate():
             }
         })
 
-@sio.event
-def connect(sid, environ, auth):
+# team is bool
+def add_player(sid, name, team):
     global keystates
     global players
-    global player_locations
-    global player_colors
     global sid2player
-    global corpuri
 
-    print('connect ', sid)
+    reset_after = (len(players) == 0)
 
-    # if the lobby is full let others spectate
-    if sum(used_positions) == len(used_positions):
-        emit_gamestate()
-        return
-
-    player_idx = 0
-    while used_positions[player_idx] == 1:
-        player_idx += 1
-
-    used_positions[player_idx] = 1
-
-    new_player = Body(10.0, 0.02, player_locations[player_idx], player_colors[player_idx])
+    new_player = Player(name, team, sid)
     players.append(new_player)
-    corpuri.append(new_player)
     sid2player[sid] = new_player
-    sid2idx_type[sid] = player_idx # avem nevoie la disconnect
     keystates[sid] = {
         'left': False,
         'right': False,
@@ -197,7 +198,26 @@ def connect(sid, environ, auth):
         'down': False,
         'x': False,
     }
-    new_player.keystates = keystates[sid]
+
+    if reset_after:
+        reset_coords()
+
+@sio.event
+def connect(sid, environ, auth):
+    global keystates
+    global player_bodies
+    global player_locations
+    global player_colors
+    global sid2player
+    global corpuri
+
+    print('connect ', sid)
+
+    if len(players) >= 2:
+        emit_gamestate()
+        return
+
+    add_player(sid, 'joe', len(players) == 0)
 
     sio.emit('time_sync', {'server_time': int(1000 * time.time())})
     emit_gamestate()
@@ -205,31 +225,32 @@ def connect(sid, environ, auth):
 @sio.event
 def disconnect(sid):
     global keystates
+    global player_bodies
     global players
-    #global player_locations
-    #global player_colors
     global sid2player
     global corpuri
 
     if not sid in sid2player:
         return
 
-    player_type = sid2idx_type[sid]
-    used_positions[player_type] = 0
-
     player = sid2player[sid]
+    body = player.body
+
     del sid2player[sid]
     del keystates[sid]
 
+    if body != None:
+        player_bodies.remove(body)
+        corpuri.remove(body)
     players.remove(player)
-    corpuri.remove(player)
 
     print('disconnect ', sid)
 
 @sio.on('key_upd')
 def key_upd(sid, data):
     global keystates
-    global players
+    #global players
+    #global player_bodies
 
     if not sid in keystates:
         return
@@ -251,7 +272,7 @@ EPS = 1e-4
 PHYSICS_REFRESH = 1 / 300
 last_time = None
 def do_physics():
-    global players
+    global player_bodies
     global ball
     global keystates
     global last_time
@@ -267,7 +288,7 @@ def do_physics():
         #print('yikes')
         return
 
-    for player in players:
+    for player in player_bodies:
         if player.kicking == False and player.keystates['x'] == True:
             player.used_kick = False
         player.kicking = player.keystates['x']
@@ -279,7 +300,7 @@ def do_physics():
         else:
             C.mass = C.rest_mass
 
-    for player in players:
+    for player in player_bodies:
         player.F = np.array([
             player.keystates['right'] - player.keystates['left'],
             player.keystates['down'] - player.keystates['up']
@@ -288,7 +309,7 @@ def do_physics():
     ball.F = - 0.3 * ball.mass * ball.v * 2
 
     # ELASTIC COLLISION WITH THE BORDER --- NOT THE CASE IN REAL BONKIO??
-    for C in players:
+    for C in player_bodies:
         if C.x[0] + C.R >= WIDTH - EPS:
             if C.v[0] > 0:
                 C.v[0] = -RESTITUTION * C.v[0]
@@ -373,7 +394,7 @@ def do_physics():
                 # do we need to handle forces here? -- maybe, subject of later discussion
 
     # KICKING 2
-    for player in players:
+    for player in player_bodies:
         if (not player.used_kick) and player.kicking and modul(player.x - ball.x) - player.R - ball.R <= KICK_DISTANCE:
             norm = (ball.x - player.x) / modul(player.x - ball.x)
             ball.v += KICK_MOMENTUM / ball.mass * norm
