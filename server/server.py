@@ -77,13 +77,14 @@ sid2player = {}
 
 POLE_BIG_Y = HEIGHT * 0.65
 POLE_SMALL_Y = HEIGHT * 0.35
-stalpi = [
-    Body(4.0,  0.015, np.array([PITCH_X_END, POLE_BIG_Y]), '#ff0000', True),
-    Body(4.0,  0.015, np.array([PITCH_X_END, POLE_SMALL_Y]), '#ff0000', True),
-    Body(4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_BIG_Y]), '#0000ff', True),
-    Body(4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_SMALL_Y]), '#0000ff', True),
+STALPI_PARAM = [
+    (4.0,  0.015, np.array([PITCH_X_END, POLE_BIG_Y]), '#ff0000', True),
+    (4.0,  0.015, np.array([PITCH_X_END, POLE_SMALL_Y]), '#ff0000', True),
+    (4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_BIG_Y]), '#0000ff', True),
+    (4.0,  0.015, np.array([PITCH_X_BEGIN, POLE_SMALL_Y]), '#0000ff', True)
 ]
 
+stalpi = [Body(*args) for args in STALPI_PARAM]
 corpuri = [ball] + stalpi
 
 KICK_DISTANCE = 15e-3
@@ -100,7 +101,7 @@ start_play = time.time() # when in_play = False a countdown starts until the nex
 last_scorer = 0
 
 # prepares arena for the round
-def reset_coords():
+def reset_coords(same_players = False):
     global ball
     global player_bodies
     global sid2player
@@ -111,10 +112,18 @@ def reset_coords():
 
     ball.x = np.array([WIDTH / 2, HEIGHT / 2])
     ball.v = np.zeros(2)
+
+    # reset stalpi
+    for stalp, args in zip(stalpi, STALPI_PARAM):
+        stalp = Body(*args)
     corpuri = [ball] + stalpi
     player_bodies = []
+
     loc_idx = [0, 0]
     for player in players:
+        if same_players and player.body == None:
+            continue
+
         P = Body(
             10.0,
             0.02,

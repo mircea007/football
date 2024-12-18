@@ -226,6 +226,11 @@ socket.on('gamestate', (new_state) => {
 let form = document.getElementById('join');
 let name_input = document.getElementById('name');
 let team_input = document.getElementById('team');
+let spectate_input = document.getElementById('spectate');
+
+spectate_input.addEventListener('click', (evt) => {
+  form.classList.add("form_acc");
+});
 
 form.addEventListener('submit', (evt) => {
   socket.emit('request_join', {
