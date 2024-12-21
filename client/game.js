@@ -46,7 +46,7 @@ handle_wh_changes();
 
 let FPS = 30;
 
-function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
+function draw_scene( {'round_info': round_info, 'bodies': entity_list, 'players': player_list} ){
   handle_wh_changes();
 
   const PADDING = 0.1 * HEIGHT;
@@ -177,6 +177,45 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
 
   ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
   ctx.fillText('FPS = ' + FPS.toFixed(1), 20, 40);
+
+  //ctx.fillText('Press P for players', 20, HEIGHT - 20);
+  const NAME_PREFIX = 12;
+  const NAME_MARGIN = 10;
+  const TEAM_RAD = 10;
+  const BIG_MARGIN = 7;
+
+  const Y_COMP = PITCH_Y_END + BIG_MARGIN;
+  let x_blue = PADDING;
+  let x_red = WIDTH - PADDING;
+  player_list.forEach( ({'name': name, 'team': team, 'on_pitch': on_pitch}) => {
+    let short_name = name;
+    if( name.length > NAME_PREFIX )
+      short_name = name.slice(0, NAME_PREFIX - 2) + '...';
+
+    let text_width = ctx.measureText(short_name).width;
+    let comp_width = text_width + 3 * NAME_MARGIN + 2 * TEAM_RAD;
+
+    let x_render = (team == 0) ? x_blue : x_red - comp_width;
+    if( team == 0 )
+      x_blue += (comp_width + BIG_MARGIN);
+    else
+      x_red -= (comp_width + BIG_MARGIN);
+
+    // background
+    ctx.fillStyle = (on_pitch) ? '#000000' : 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(x_render, Y_COMP, comp_width, 2 * NAME_MARGIN + 2 * TEAM_RAD);
+
+    // team circle
+    ctx.fillStyle = (team == 0) ? 'blue' : 'red';
+    ctx.beginPath();
+    ctx.arc(x_render + NAME_MARGIN + TEAM_RAD, Y_COMP + NAME_MARGIN + TEAM_RAD, TEAM_RAD, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // player name
+    ctx.font = "15px Courier New, monospace";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(short_name, x_render + 2 * NAME_MARGIN + 2 * TEAM_RAD, Y_COMP + 2.5 * NAME_MARGIN);
+  } );
 }
 
 document.addEventListener('keydown', (evt) => {
@@ -216,7 +255,8 @@ let game_state = {
       'in_play': false,
       'start_play': +(new Date()) + 10 * 1000
   },
-  'bodies': []
+  'bodies': [],
+  'players': []
 };
 
 socket.on('connect', () => {console.log('connected');});

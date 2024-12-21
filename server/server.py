@@ -236,27 +236,36 @@ def emit_gamestate():
         last_emit_gamestate = now - BROADCAST_REFRESH - 1
 
     delta = now - last_emit_gamestate
-    if delta >= BROADCAST_REFRESH:
-        last_emit_gamestate = now
-        sio.emit('gamestate', {
-            'bodies': [
-                {
-                    'x': corp.x[0],
-                    'y': corp.x[1],
-                    'R': corp.R,
-                    'color': corp.color,
-                    'kicking': corp.kicking,
-                    'name': corp.name
-                } for corp in corpuri
-            ],
-            'round_info': {
-                'score': score,
-                'in_play': in_play,
-                'start_play': start_play,
-                'last_scorer': last_scorer,
-                'msg': BIG_SCREEN_MESSAGE
-            }
-        })
+    if delta <= BROADCAST_REFRESH:
+        return
+
+    last_emit_gamestate = now
+    sio.emit('gamestate', {
+        'bodies': [
+            {
+                'x': corp.x[0],
+                'y': corp.x[1],
+                'R': corp.R,
+                'color': corp.color,
+                'kicking': corp.kicking,
+                'name': corp.name
+            } for corp in corpuri
+        ],
+        'round_info': {
+            'score': score,
+            'in_play': in_play,
+            'start_play': start_play,
+            'last_scorer': last_scorer,
+            'msg': BIG_SCREEN_MESSAGE
+        },
+        'players': [
+            {
+                'name': player.name,
+                'team': int(player.team),
+                'on_pitch': int(player.body != None)
+            } for player in players
+        ]
+    })
 
 # team is bool
 def add_player(sid, name, team):
