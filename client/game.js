@@ -102,6 +102,44 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   ctx.arc(WIDTH / 2, HEIGHT / 2, CENTER_RADIUS, 0, 2 * Math.PI);
   ctx.stroke();
 
+  document.body.style.backgroundColor = '';
+
+  if( !round_info.in_play ){ // animation between rounds
+    if( round_info.start_play ){
+      ctx.font = "15px Courier New, monospace";
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(
+        Math.max(0, (round_info.start_play - +(new Date()) / 1000)).toFixed(1),
+        WIDTH - 60, 50
+      );
+    }
+
+    //ctx.fillStyle = 'rgba(0, 0, 0, ' + 0.2 * trainsition_param + ')';
+    //ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    //const FONT_HEIGHT = 60;
+    //ctx.font = "60px 'Brush Scipt MT', cursive";
+    const FONT_HEIGHT = 80;
+    ctx.font = "80px Courier New, monospace";
+
+    ctx.fillStyle = "#ffffff";
+    if( round_info.msg ){
+      let lines = round_info.msg.split(/\n/);
+      let nlines = lines.length;
+
+      if( nlines >= 1 )
+        ctx.fillText(lines[0], WIDTH / 2 - ctx.measureText(lines[0]).width / 2, PADDING / 2 + FONT_HEIGHT / 2);
+      if( nlines >= 2 )
+        ctx.fillText(lines[1], WIDTH / 2 - ctx.measureText(lines[1]).width / 2, HEIGHT - PADDING / 2 + FONT_HEIGHT / 2);
+    }
+
+    if( round_info.last_scorer == 0 )
+      document.body.style.backgroundColor = 'blue';
+
+    if( round_info.last_scorer == 1 )
+      document.body.style.backgroundColor = 'red';
+  }
+
   entity_list.forEach( (corp) => {
     x = corp['x'] * HEIGHT;
     y = corp['y'] * HEIGHT;
@@ -128,7 +166,7 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
   });
 
   ctx.font = "15px Courier New, monospace";
-  ctx.fillStyle = "#000000";
+  ctx.fillStyle = "#ffffff";
   ctx.fillText(
     "Score: " + round_info.score[0] + ' vs ' + round_info.score[1],
     20, 20
@@ -139,37 +177,6 @@ function draw_scene( {'round_info': round_info, 'bodies': entity_list} ){
 
   ctx.fillText('' + round_info.in_play, WIDTH - 60, 20);
   ctx.fillText('FPS = ' + FPS.toFixed(1), 20, 40);
-
-  document.body.style.backgroundColor = '';
-
-  if( !round_info.in_play ){ // animation between rounds
-    const trainsition_param = Math.min(
-      1,
-      (new Date() - round_info.start_play + NEXT_ROUND_DELAY) / TRANSITION,
-      (round_info.start_play - new Date()) / TRANSITION,
-    );
-
-    ctx.fillText(
-      Math.max(0, (round_info.start_play - (new Date())) / 1000).toFixed(1),
-      WIDTH - 60, 50
-    );
-
-    ctx.fillStyle = 'rgba(0, 0, 0, ' + 0.2 * trainsition_param + ')';
-    ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-    ctx.font = "60px 'Brush Scipt MT', cursive";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText("GOAL", WIDTH / 2 - ctx.measureText("GOAL").width / 2, HEIGHT / 2 * trainsition_param);
-
-    let tmp_text = round_info.score[0] + ' vs ' + round_info.score[1];
-    ctx.fillText(tmp_text, WIDTH / 2 - ctx.measureText(tmp_text).width / 2, 60 + HEIGHT / 2 * trainsition_param);
-
-    if( round_info.last_scorer == 0 )
-      document.body.style.backgroundColor = 'blue';
-
-    if( round_info.last_scorer == 1 )
-      document.body.style.backgroundColor = 'red';
-  }
 }
 
 document.addEventListener('keydown', (evt) => {
@@ -227,9 +234,16 @@ let form = document.getElementById('join');
 let name_input = document.getElementById('name');
 let team_input = document.getElementById('team');
 let spectate_input = document.getElementById('spectate');
+let lobby_button = document.getElementById('lobby');
 
 spectate_input.addEventListener('click', (evt) => {
   form.classList.add("form_acc");
+});
+
+lobby_button.addEventListener('click', (evt) => {
+  socket.emit('move_to_lobby');
+  form.classList.remove('form_acc');
+  form.classList.remove('form_deny');
 });
 
 form.addEventListener('submit', (evt) => {

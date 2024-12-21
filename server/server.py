@@ -95,10 +95,15 @@ RESTITUTION = 0.80
 keystates = {} # access by sid
 
 NEXT_ROUND_DELAY = 3
+NEXT_MATCH_DELAY = 5
+
 score = [0, 0]
-in_play = True
-start_play = time.time() # when in_play = False a countdown starts until the next round
-last_scorer = 0
+in_play = False
+start_play = None # when in_play = False a countdown starts until the next round, or nothing
+last_scorer = -1
+BIG_SCREEN_MESSAGE = "JOIN\nNOW"
+
+MATCH_GOAL_WIN = 3
 
 # prepares arena for the round
 def reset_coords(same_players = False):
@@ -138,6 +143,59 @@ def reset_coords(same_players = False):
         corpuri.append(P)
         player.body = P
 
+prev_players = 0
+def player_change():
+    global prev_players
+    global players
+
+    global in_play
+    global start_play
+    global score
+    global last_scorer
+    global BIG_SCREEN_MESSAGE
+
+    new_players = len(players) # maybe store the player count for each team separately, force at least 1v1
+
+    if new_players < 1 and prev_players >= 1:
+        in_play = False
+        start_play = None
+        score = [0, 0]
+        last_scorer = -1
+        BIG_SCREEN_MESSAGE = "JOIN\nNOW"
+
+        prev_players = new_players
+        return
+
+    if new_players >= 1 and prev_players < 1:
+        start_play = time.time() + NEXT_MATCH_DELAY
+
+        prev_players = new_players
+        return
+
+def goal_scored():
+    global MATCH_GOAL_WIN
+    global NEXT_ROUND_DELAY
+    global NEXT_MATCH_DELAY
+    global BIG_SCREEN_MESSAGE
+    global score
+    global start_play
+    global last_scorer
+
+    if score[0] >= MATCH_GOAL_WIN:
+        start_play = time.time() + NEXT_MATCH_DELAY
+        BIG_SCREEN_MESSAGE = "BLUE\nwins"
+        score = [0, 0]
+        return
+
+    if score[1] >= MATCH_GOAL_WIN:
+        start_play = time.time() + NEXT_MATCH_DELAY
+        BIG_SCREEN_MESSAGE = "RED\nwins"
+        score = [0, 0]
+        return
+
+    start_play = time.time() + NEXT_ROUND_DELAY
+    BIG_SCREEN_MESSAGE = ("BLUE\nscores" if last_scorer == 0 else "RED\nscores")
+
 def check_game_state():
     global NEXT_ROUND_DELAY
     global PITCH_X_BEGIN
@@ -150,7 +208,7 @@ def check_game_state():
     global last_scorer
 
     if in_play == False:
-        if time.time() > start_play:
+        if start_play != None and time.time() > start_play:
             in_play = True
             reset_coords()
     else:
@@ -165,7 +223,7 @@ def check_game_state():
         if change_state:
             score[last_scorer] += 1
             in_play = False
-            start_play = time.time() + NEXT_ROUND_DELAY
+            goal_scored()
 
 BROADCAST_REFRESH = 1 / 150
 last_emit_gamestate = None
@@ -194,8 +252,9 @@ def emit_gamestate():
             'round_info': {
                 'score': score,
                 'in_play': in_play,
-                'start_play': int(start_play * 1000),
+                'start_play': start_play,
                 'last_scorer': last_scorer,
+                'msg': BIG_SCREEN_MESSAGE
             }
         })
 
@@ -204,8 +263,6 @@ def add_player(sid, name, team):
     global keystates
     global players
     global sid2player
-
-    reset_after = (len(players) == 0)
 
     team_count[team] += 1
 
@@ -220,8 +277,7 @@ def add_player(sid, name, team):
         'x': False,
     }
 
-    if reset_after:
-        reset_coords()
+    player_change()
 
 @sio.event
 def connect(sid, environ, auth):
@@ -229,8 +285,7 @@ def connect(sid, environ, auth):
     sio.emit('time_sync', {'server_time': int(1000 * time.time())})
     emit_gamestate()
 
-@sio.event
-def disconnect(sid):
+def remove_player(sid):
     global keystates
     global player_bodies
     global players
@@ -243,6 +298,8 @@ def disconnect(sid):
     player = sid2player[sid]
     body = player.body
 
+    team_count[player.team] -= 1
+
     del sid2player[sid]
     del keystates[sid]
 
@@ -251,7 +308,17 @@ def disconnect(sid):
         corpuri.remove(body)
     players.remove(player)
 
+    player_change()
+
+@sio.event
+def disconnect(sid):
+    remove_player(sid)
     print('disconnect ', sid)
+
+@sio.on('move_to_lobby')
+def move_to_lobby(sid):
+    remove_player(sid)
+    print('move to lobby ', sid)
 
 @sio.on('request_join')
 def request_join(sid, data):
@@ -260,20 +327,24 @@ def request_join(sid, data):
 
     if not name:
         sio.emit('request_deny', None, to = sid)
+        print("reject -- name bad")
         return
 
     if not (team == 'red' or team == 'blue'):
         sio.emit('request_deny', None, to = sid)
+        print("reject -- team bad")
         return
 
     team = (team == 'red')
 
     if team_count[team] >= len(player_locations[team]):
         sio.emit('request_deny', None, to = sid)
+        print("reject -- team full")
         return
 
     if sid in sid2player:
         sio.emit('request_deny', None, to = sid)
+        print("reject -- allready has player")
         return
 
     add_player(sid, name, team)
@@ -329,7 +400,7 @@ def do_physics():
 
     for C in corpuri:
         if C.stationary:
-            C.mass = 1e6
+            C.mass = 1e9
         else:
             C.mass = C.rest_mass
 
